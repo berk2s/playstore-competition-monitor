@@ -6,12 +6,11 @@ It exists because the Play Store doesn't tell you when a competitor changes thei
 
 ## Demo
 
--![Demo](docs/demo.gif)
 Live: http://pcm-prod-alb-2088702885.eu-west-3.elb.amazonaws.com
 
 Your browser will likely warn that the connection isn't secure - that's expected. The stack is deployed without HTTPS for now (no domain / ACM cert wired up), so traffic to the ALB is plain HTTP. Fine for a demo; obviously not for anything real.
 
-<video src="docs/demo.mp4" controls width="900"></video>
+![Demo](docs/demo.gif)
 
 ## How it fits together
 
