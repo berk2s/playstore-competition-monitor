@@ -257,3 +257,19 @@ resource "aws_secretsmanager_secret_version" "redis_url" {
   secret_id     = aws_secretsmanager_secret.redis_url.id
   secret_string = module.redis.url
 }
+
+module "github_oidc" {
+  source               = "../../modules/github_oidc"
+  name_prefix          = local.name_prefix
+  github_owner         = var.github_owner
+  github_repo          = var.github_repo
+  create_oidc_provider = var.github_oidc_create_provider
+  ecr_repository_arns  = values(module.ecr.repository_arns)
+  ecs_cluster_arn      = module.ecs_cluster.cluster_arn
+  ecs_service_arns = [
+    module.ecs_api.service_arn,
+    module.ecs_worker.service_arn,
+    module.ecs_web.service_arn,
+  ]
+  tags = local.tags
+}

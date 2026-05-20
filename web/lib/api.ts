@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { App, Screenshot, CreateAppInput, UpdateAppInput } from './types';
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 export const http = axios.create({ baseURL, timeout: 15_000 });
 

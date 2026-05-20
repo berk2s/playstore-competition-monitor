@@ -78,3 +78,19 @@ variable "redis_node_type" {
   type    = string
   default = "cache.t4g.micro"
 }
+
+variable "github_owner" {
+  type    = string
+  default = "berk2s"
+}
+
+variable "github_repo" {
+  type    = string
+  default = "playstore-competition-monitor"
+}
+
+variable "github_oidc_create_provider" {
+  type        = bool
+  default     = true
+  description = "Set to false if a GitHub OIDC provider already exists in this AWS account."
+}

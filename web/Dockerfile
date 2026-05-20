@@ -7,8 +7,6 @@ RUN yarn install
 FROM node:20-alpine AS build
 WORKDIR /app
 RUN corepack enable
-ARG NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build
