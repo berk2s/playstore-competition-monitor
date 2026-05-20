@@ -8,9 +8,20 @@ coverage/
 .DS_Store
 storage/
 playwright-report/
+.idea
+.idea/*
+
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
-.idea
-.idea/*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+**/terraform.tfvars
+**/*.auto.tfvars
+!**/terraform.tfvars.example

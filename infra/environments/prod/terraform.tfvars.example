@@ -1,0 +1,1 @@
+mongo_uri_secret_arn = "arn:aws:secretsmanager:eu-west-3:236190295571:secret:playstore-competition-monitor-prod/mongo-uri-LMG7yX"
