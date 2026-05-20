@@ -12,3 +12,5 @@ playwright-report/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+.idea
+.idea/*
