@@ -4,7 +4,7 @@ import { Types } from 'mongoose';
 import { config } from './config.ts';
 import { logger } from './logger.ts';
 import { AppModel, ScreenshotModel } from './models.ts';
-import { captureListing } from './capture.ts';
+import { captureListing, type ListingMetadata } from './capture.ts';
 import { makeStorage, type StorageDriver } from './storage.ts';
 
 export const CAPTURE_QUEUE = 'capture';
@@ -23,7 +23,9 @@ export interface JobLike {
 }
 
 export interface ProcessDeps {
-  captureListing: (packageName: string) => Promise<{ buffer: Buffer; durationMs: number }>;
+  captureListing: (
+    packageName: string,
+  ) => Promise<{ buffer: Buffer; durationMs: number; metadata: ListingMetadata }>;
   storage: StorageDriver;
 }
 
@@ -55,7 +57,7 @@ export async function processCaptureJob(
   }
 
   try {
-    const { buffer, durationMs } = await deps.captureListing(packageName);
+    const { buffer, durationMs, metadata } = await deps.captureListing(packageName);
     const capturedAt = new Date();
     const key = `apps/${appId}/${capturedAt.toISOString().replace(/[:.]/g, '-')}.png`;
     const stored = await deps.storage.put(key, buffer, 'image/png');
@@ -67,6 +69,7 @@ export async function processCaptureJob(
       imageUrl: stored.url,
       capturedAt,
       durationMs,
+      metadata,
     });
     app.lastCapturedAt = capturedAt;
     await app.save();

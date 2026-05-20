@@ -23,9 +23,29 @@ export async function closeBrowser(): Promise<void> {
   }
 }
 
+export interface ListingMetadata {
+  title: string | null;
+  developer: string | null;
+  iconUrl: string | null;
+  rating: number | null;
+  ratingCount: number | null;
+  installs: string | null;
+  price: string | null;
+  containsAds: boolean | null;
+  inAppPurchases: boolean | null;
+  updatedOn: string | null;
+  version: string | null;
+  size: string | null;
+  minAndroid: string | null;
+  whatsNew: string | null;
+  shortDescription: string | null;
+  longDescription: string | null;
+}
+
 export interface CaptureResult {
   buffer: Buffer;
   durationMs: number;
+  metadata: ListingMetadata;
 }
 
 export async function captureListing(packageName: string): Promise<CaptureResult> {
@@ -75,9 +95,154 @@ export async function captureListing(packageName: string): Promise<CaptureResult
     await page.evaluate(() => window.scrollTo(0, 0));
 
     const buffer = await page.screenshot({ fullPage: true, type: 'png', animations: 'disabled' });
-    return { buffer, durationMs: Date.now() - started };
+    const metadata = await extractListingMetadata(page);
+    return { buffer, durationMs: Date.now() - started, metadata };
   } finally {
     await ctx.close().catch(() => undefined);
+  }
+}
+
+async function extractListingMetadata(page: Page): Promise<ListingMetadata> {
+  const empty: ListingMetadata = {
+    title: null,
+    developer: null,
+    iconUrl: null,
+    rating: null,
+    ratingCount: null,
+    installs: null,
+    price: null,
+    containsAds: null,
+    inAppPurchases: null,
+    updatedOn: null,
+    version: null,
+    size: null,
+    minAndroid: null,
+    whatsNew: null,
+    shortDescription: null,
+    longDescription: null,
+  };
+  try {
+    const extracted = await page.evaluate(() => {
+      type LD = {
+        '@type'?: string | string[];
+        name?: string;
+        description?: string;
+        image?: string;
+        author?: { name?: string };
+        aggregateRating?: { ratingValue?: number | string; ratingCount?: number | string };
+        offers?: { price?: number | string; priceCurrency?: string };
+      };
+
+      const isAppType = (t: LD['@type']): boolean => {
+        if (!t) return false;
+        const arr = Array.isArray(t) ? t : [t];
+        return arr.some((x) => typeof x === 'string' && /Application/i.test(x));
+      };
+
+      let ld: LD | null = null;
+      document.querySelectorAll('script[type="application/ld+json"]').forEach((s) => {
+        try {
+          const parsed: unknown = JSON.parse(s.textContent ?? '{}');
+          const arr: LD[] = Array.isArray(parsed) ? (parsed as LD[]) : [parsed as LD];
+          for (const obj of arr) {
+            if (isAppType(obj['@type'])) ld = obj;
+          }
+        } catch {
+          /* ignore */
+        }
+      });
+
+      const findByText = (label: string): Element | null => {
+        const lower = label.toLowerCase();
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+        let node: Node | null = walker.currentNode;
+        while ((node = walker.nextNode())) {
+          const el = node as Element;
+          const direct = Array.from(el.childNodes)
+            .filter((n) => n.nodeType === Node.TEXT_NODE)
+            .map((n) => (n.textContent ?? '').trim())
+            .join(' ')
+            .trim()
+            .toLowerCase();
+          if (direct === lower) return el;
+        }
+        return null;
+      };
+
+      const valueByLabel = (label: string): string | null => {
+        const el = findByText(label);
+        if (!el) return null;
+        const parent = el.parentElement;
+        if (!parent) return null;
+        for (const child of Array.from(parent.children)) {
+          if (child === el) continue;
+          const t = (child.textContent ?? '').trim();
+          if (t) return t;
+        }
+        return null;
+      };
+
+      const anyTextIncludes = (needle: string): boolean => {
+        const lower = needle.toLowerCase();
+        return (document.body.innerText ?? '').toLowerCase().includes(lower);
+      };
+
+      const sectionContent = (heading: string): string | null => {
+        const lower = heading.toLowerCase();
+        const headings = Array.from(document.querySelectorAll('h1,h2,h3,h4'));
+        for (const h of headings) {
+          if ((h.textContent ?? '').trim().toLowerCase() === lower) {
+            const container = h.closest('section, div');
+            if (!container) continue;
+            const text = (container.textContent ?? '').trim();
+            const stripped = text.replace(new RegExp(`^${heading}\\s*`, 'i'), '').trim();
+            return stripped || null;
+          }
+        }
+        return null;
+      };
+
+      const ldObj = ld as LD | null;
+      const rating =
+        ldObj?.aggregateRating?.ratingValue != null
+          ? Number(ldObj.aggregateRating.ratingValue)
+          : null;
+      const ratingCount =
+        ldObj?.aggregateRating?.ratingCount != null
+          ? Number(ldObj.aggregateRating.ratingCount)
+          : null;
+
+      let price: string | null = null;
+      if (ldObj?.offers?.price != null) {
+        const p = Number(ldObj.offers.price);
+        if (Number.isFinite(p)) {
+          price = p === 0 ? 'Free' : `${ldObj.offers.priceCurrency ?? ''} ${p}`.trim();
+        }
+      }
+
+      return {
+        title: ldObj?.name ?? document.querySelector('h1')?.textContent?.trim() ?? null,
+        developer: ldObj?.author?.name ?? null,
+        iconUrl: ldObj?.image ?? null,
+        rating: Number.isFinite(rating) ? rating : null,
+        ratingCount: Number.isFinite(ratingCount) ? ratingCount : null,
+        installs: valueByLabel('Downloads'),
+        price,
+        containsAds: anyTextIncludes('Contains ads'),
+        inAppPurchases: anyTextIncludes('In-app purchases'),
+        updatedOn: valueByLabel('Updated on'),
+        version: valueByLabel('Version'),
+        size: valueByLabel('Downloads size') ?? valueByLabel('Size'),
+        minAndroid: valueByLabel('Requires Android'),
+        whatsNew: sectionContent("What's new"),
+        shortDescription: null,
+        longDescription: ldObj?.description ?? sectionContent('About this app'),
+      };
+    });
+    return { ...empty, ...extracted };
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'metadata extract failed');
+    return empty;
   }
 }
 

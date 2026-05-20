@@ -7,7 +7,7 @@ import { closeBrowser } from './capture.ts';
 async function main() {
   await connectDb();
   const { worker, connection: workerConn } = startCaptureWorker();
-  const { dispatcher, queue, connection: dispConn } = await startDispatcher();
+  const { dispatcher, queue, captureQueue, connection: dispConn } = await startDispatcher();
   logger.info('worker started');
 
   const shutdown = async (signal: string) => {
@@ -16,6 +16,7 @@ async function main() {
       await worker.close();
       await dispatcher.close();
       await queue.close();
+      await captureQueue.close();
       await workerConn.quit();
       await dispConn.quit();
       await closeBrowser();

@@ -5,6 +5,7 @@ import { logger } from './logger.ts';
 import { AppModel } from './models.ts';
 import { CAPTURE_QUEUE } from './processor.ts';
 
+const DISPATCH_QUEUE = 'dispatch';
 const DISPATCH_JOB = 'dispatch';
 
 export interface QueueLike {
@@ -34,22 +35,22 @@ export async function dispatchTick(queue: QueueLike): Promise<number> {
 
 export async function startDispatcher() {
   const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
-  const queue = new Queue(CAPTURE_QUEUE, { connection });
+  const captureQueue = new Queue(CAPTURE_QUEUE, { connection });
+  const dispatchQueue = new Queue(DISPATCH_QUEUE, { connection });
 
-  await queue.add(
+  await dispatchQueue.add(
     DISPATCH_JOB,
     { tick: true },
     { repeat: { pattern: config.CAPTURE_CRON }, jobId: 'dispatch-tick' },
   );
 
   const dispatcher = new Worker(
-    CAPTURE_QUEUE,
-    async (job) => {
-      if (job.name !== DISPATCH_JOB) return;
-      await dispatchTick(queue);
+    DISPATCH_QUEUE,
+    async () => {
+      await dispatchTick(captureQueue);
     },
     { connection, concurrency: 1 },
   );
 
-  return { dispatcher, queue, connection };
+  return { dispatcher, queue: dispatchQueue, captureQueue, connection };
 }

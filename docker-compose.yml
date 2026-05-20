@@ -1,0 +1,77 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+
+  api:
+    build:
+      context: ./api
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      API_PORT: 4000
+      CORS_ORIGIN: http://localhost:3000
+      MONGO_URI: mongodb://mongo:27017/playstore_competition_monitor
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: local
+      LOCAL_STORAGE_DIR: /data/storage
+      PUBLIC_ASSET_BASE_URL: http://localhost:4000/screenshots
+    ports:
+      - '4000:4000'
+    volumes:
+      - screenshot-data:/data/storage
+
+  worker:
+    build:
+      context: ./worker
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      MONGO_URI: mongodb://mongo:27017/playstore_competition_monitor
+      REDIS_URL: redis://redis:6379
+      CAPTURE_CRON: '0 * * * *'
+      CAPTURE_CONCURRENCY: '2'
+      CAPTURE_MAX_ATTEMPTS: '3'
+      STORAGE_DRIVER: local
+      LOCAL_STORAGE_DIR: /data/storage
+      PUBLIC_ASSET_BASE_URL: http://localhost:4000/screenshots
+      CAPTURE_LOCALE: en
+      CAPTURE_COUNTRY: US
+    volumes:
+      - screenshot-data:/data/storage
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+
+volumes:
+  mongo-data:
+  redis-data:
+  screenshot-data:

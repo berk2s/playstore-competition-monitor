@@ -38,7 +38,28 @@ function makeDeps(overrides: Partial<ProcessDeps> = {}): {
 } {
   const captureListing =
     (overrides.captureListing as ReturnType<typeof vi.fn>) ??
-    vi.fn(async () => ({ buffer: Buffer.from('png'), durationMs: 123 }));
+    vi.fn(async () => ({
+      buffer: Buffer.from('png'),
+      durationMs: 123,
+      metadata: {
+        title: 'Example',
+        developer: 'Acme',
+        iconUrl: 'https://x/icon.png',
+        rating: 4.5,
+        ratingCount: 1000,
+        installs: '100M+',
+        price: 'Free',
+        containsAds: true,
+        inAppPurchases: false,
+        updatedOn: 'Jul 12, 2024',
+        version: '1.2.3',
+        size: '120 MB',
+        minAndroid: 'Android 7.0+',
+        whatsNew: 'Bug fixes.',
+        shortDescription: null,
+        longDescription: 'A long description.',
+      },
+    }));
   const put =
     overrides.storage
       ? (overrides.storage.put as ReturnType<typeof vi.fn>)
@@ -73,6 +94,9 @@ describe('processCaptureJob', () => {
     expect(shots[0]!.status).toBe('success');
     expect(shots[0]!.imageKey).toBe(keyArg);
     expect(shots[0]!.durationMs).toBe(123);
+    expect(shots[0]!.metadata?.rating).toBe(4.5);
+    expect(shots[0]!.metadata?.installs).toBe('100M+');
+    expect(shots[0]!.metadata?.version).toBe('1.2.3');
 
     const reloaded = await AppModel.findById(app._id);
     expect(reloaded?.lastCapturedAt).toBeInstanceOf(Date);

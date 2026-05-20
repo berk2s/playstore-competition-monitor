@@ -40,6 +40,26 @@ export type UpdateAppInput = z.infer<typeof updateAppInputSchema>;
 export const screenshotStatusSchema = z.enum(['success', 'failed']);
 export type ScreenshotStatus = z.infer<typeof screenshotStatusSchema>;
 
+export const listingMetadataSchema = z.object({
+  title: z.string().nullable(),
+  developer: z.string().nullable(),
+  iconUrl: z.string().nullable(),
+  rating: z.number().nullable(),
+  ratingCount: z.number().nullable(),
+  installs: z.string().nullable(),
+  price: z.string().nullable(),
+  containsAds: z.boolean().nullable(),
+  inAppPurchases: z.boolean().nullable(),
+  updatedOn: z.string().nullable(),
+  version: z.string().nullable(),
+  size: z.string().nullable(),
+  minAndroid: z.string().nullable(),
+  whatsNew: z.string().nullable(),
+  shortDescription: z.string().nullable(),
+  longDescription: z.string().nullable(),
+});
+export type ListingMetadata = z.infer<typeof listingMetadataSchema>;
+
 export const screenshotSchema = z.object({
   id: z.string(),
   appId: z.string(),
@@ -49,6 +69,7 @@ export const screenshotSchema = z.object({
   capturedAt: z.string(),
   durationMs: z.number().nullable(),
   error: z.string().nullable(),
+  metadata: listingMetadataSchema.nullable(),
 });
 export type Screenshot = z.infer<typeof screenshotSchema>;
 

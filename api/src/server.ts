@@ -19,7 +19,10 @@ export async function buildServer() {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
   await app.register(cors, { origin: config.CORS_ORIGIN.split(',') });
   await app.register(rateLimit, { max: 200, timeWindow: '1 minute' });
 
